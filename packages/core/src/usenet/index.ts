@@ -1105,6 +1105,37 @@ export class UsenetEngine {
     return this.stats.snapshot();
   }
 
+  /**
+   * Sample evenly-spaced articles from an NZB using the same warm provider
+   * pool, priority rules and backup failover as playback. A false result is a
+   * definitive 430 from every eligible provider; transient provider failures
+   * are allowed to throw so callers can preserve an unverified result.
+   */
+  async sampleAvailability(
+    nzb: Nzb,
+    sampleCount: number,
+    signal?: AbortSignal
+  ): Promise<boolean> {
+    this.touch();
+    const segments = nzb.files.flatMap((file) => file.segments);
+    if (segments.length === 0) return false;
+    const count = Math.max(1, Math.min(sampleCount, segments.length));
+    const indices = new Set<number>();
+    for (let i = 0; i < count; i++) {
+      indices.add(
+        count === 1
+          ? Math.floor((segments.length - 1) / 2)
+          : Math.round((i * (segments.length - 1)) / (count - 1))
+      );
+    }
+    const results = await Promise.all(
+      [...indices].map((index) =>
+        this.pool.statSegment(segments[index].messageId, signal, nzb.hash)
+      )
+    );
+    return results.every(Boolean);
+  }
+
   cacheStats(): CacheStats {
     return this.cache.stats();
   }

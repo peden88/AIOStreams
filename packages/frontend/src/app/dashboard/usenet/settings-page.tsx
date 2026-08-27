@@ -94,6 +94,19 @@ const SECTIONS: { title: string; leaves: string[]; note?: string }[] = [
       'Providers that give unreliable answers are detected and ignored automatically.',
   },
   {
+    title: 'Search result health checks',
+    leaves: [
+      'resultHealthCheckEnabled',
+      'resultHealthCheckMaxResults',
+      'resultHealthCheckSamples',
+      'resultHealthCheckConcurrency',
+      'resultHealthCheckTimeout',
+      'resultHealthCheckHealthyTtl',
+      'resultHealthCheckFailedTtl',
+    ],
+    note: 'Optional pre-result checks sample articles directly against your configured NNTP providers after filtering, SEL and sorting. Confirmed-dead releases are removed before Stremio sees them; timeouts and provider errors keep the result as unverified.',
+  },
+  {
     title: 'Import & API',
     leaves: ['maxNzbSize', 'maxConcurrentInspects', 'sabnzbdApiEnabled'],
   },

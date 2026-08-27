@@ -48,6 +48,7 @@ import {
   type AnalyticsServiceBreakdown,
 } from '../analytics/index.js';
 import type { AddonDispositionMap } from '../streams/fetcher.js';
+import { filterDeadUsenetResults } from '../usenet/integration/result-health-check.js';
 
 const logger = createLogger('core');
 
@@ -369,6 +370,12 @@ export async function processStreams(
     context
   );
   selMs = Date.now() - selStart;
+
+  // Native NNTP sampling deliberately runs after filtering/SEL/sorting so the
+  // provider is only asked about the results the user is most likely to play,
+  // and before limiting/play-chain construction so dead releases cannot enter
+  // the returned list or failover chain.
+  finalStreams = await filterDeadUsenetResults(finalStreams);
 
   if (failoverOpts?.position === 'beforeLimiting') {
     await buildPlayChain(
