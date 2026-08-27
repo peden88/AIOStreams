@@ -331,6 +331,92 @@ export const usenetSchema = {
     secret: false,
     ui: HIDDEN,
   },
+  resultHealthCheckEnabled: {
+    schema: z.boolean(),
+    default: false,
+    label: 'Pre-check search results',
+    description:
+      'Check a sample of articles from the highest-ranked native Usenet ' +
+      'results before they are returned to Stremio. Releases with a confirmed ' +
+      'missing article are removed. This adds some search latency and uses ' +
+      'NNTP commands, so leave it off unless you prefer verified results over ' +
+      'the fastest possible result list.',
+    env: 'USENET_RESULT_HEALTH_CHECK_ENABLED',
+    requiresRestart: false,
+    secret: false,
+    ui: HIDDEN,
+  },
+  resultHealthCheckMaxResults: {
+    schema: positiveInt,
+    default: 10,
+    label: 'Results to check',
+    description:
+      'Maximum number of native Usenet results to check, in final sorted ' +
+      'order. Results below this window are returned without being checked.',
+    env: 'USENET_RESULT_HEALTH_CHECK_MAX_RESULTS',
+    requiresRestart: false,
+    secret: false,
+    ui: { ...HIDDEN, min: 1, max: 50 },
+  },
+  resultHealthCheckSamples: {
+    schema: positiveInt.refine((n) => n <= 15, {
+      message: 'Expected at most 15.',
+    }),
+    default: 3,
+    label: 'Article samples per NZB',
+    description:
+      'Number of articles sampled across each NZB (evenly from beginning to ' +
+      'end). **3** is fast; **7** gives higher confidence. Sampling cannot ' +
+      'guarantee that every article in a release exists.',
+    env: 'USENET_RESULT_HEALTH_CHECK_SAMPLES',
+    requiresRestart: false,
+    secret: false,
+    ui: { ...HIDDEN, min: 1, max: 15 },
+  },
+  resultHealthCheckConcurrency: {
+    schema: positiveInt,
+    default: 3,
+    label: 'Concurrent result checks',
+    description:
+      'How many NZBs may be checked at once. Lower values are gentler on ' +
+      'providers; higher values shorten search latency.',
+    env: 'USENET_RESULT_HEALTH_CHECK_CONCURRENCY',
+    requiresRestart: false,
+    secret: false,
+    ui: { ...HIDDEN, min: 1, max: 10 },
+  },
+  resultHealthCheckTimeout: {
+    schema: seconds,
+    default: 5,
+    label: 'Result check timeout',
+    description:
+      'Maximum time spent checking one NZB. A timeout keeps the result as ' +
+      'unverified rather than hiding it.',
+    env: 'USENET_RESULT_HEALTH_CHECK_TIMEOUT',
+    requiresRestart: false,
+    secret: false,
+    ui: { kind: 'duration' as const, hidden: true },
+  },
+  resultHealthCheckHealthyTtl: {
+    schema: seconds,
+    default: 21600,
+    label: 'Healthy verdict cache',
+    description: 'How long a successful sampled verdict is reused.',
+    env: 'USENET_RESULT_HEALTH_CHECK_HEALTHY_TTL',
+    requiresRestart: false,
+    secret: false,
+    ui: { kind: 'duration' as const, hidden: true },
+  },
+  resultHealthCheckFailedTtl: {
+    schema: seconds,
+    default: 86400,
+    label: 'Failed verdict cache',
+    description: 'How long a confirmed missing-article verdict is reused.',
+    env: 'USENET_RESULT_HEALTH_CHECK_FAILED_TTL',
+    requiresRestart: false,
+    secret: false,
+    ui: { kind: 'duration' as const, hidden: true },
+  },
   verifyBudgetMs: {
     schema: nonNegativeInt,
     default: 0,
