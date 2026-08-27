@@ -83,6 +83,19 @@ async function check(stream: ParsedStream): Promise<Verdict | 'unknown'> {
   }
 }
 
+function addHealthMarker(
+  stream: ParsedStream,
+  verdict: 'healthy' | 'unknown'
+): void {
+  const marker = verdict === 'healthy' ? 'NZB Health: ✅' : 'NZB Health: ⚠️';
+  const existing = stream.message
+    ?.split('\n')
+    .filter((line) => !line.startsWith('NZB Health:'))
+    .join('\n')
+    .trim();
+  stream.message = existing ? `${marker}\n${existing}` : marker;
+}
+
 /** Remove confirmed-dead native Usenet results within the configured top-N window. */
 export async function filterDeadUsenetResults(
   streams: ParsedStream[]
@@ -109,6 +122,13 @@ export async function filterDeadUsenetResults(
   const dead = new Set(
     checked.filter(([, verdict]) => verdict === 'dead').map(([id]) => id)
   );
+  const verdictById = new Map(checked);
+  for (const stream of candidates) {
+    const verdict = verdictById.get(stream.id);
+    if (verdict === 'healthy' || verdict === 'unknown') {
+      addHealthMarker(stream, verdict);
+    }
+  }
   logger.info(
     {
       checked: checked.length,
