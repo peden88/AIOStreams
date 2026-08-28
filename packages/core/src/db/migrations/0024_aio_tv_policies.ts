@@ -24,7 +24,7 @@ export const aioTvPolicies: Migration = {
     postgres: `
       CREATE TABLE IF NOT EXISTS aio_tv_user_policies (
         user_uuid TEXT PRIMARY KEY REFERENCES users(uuid) ON DELETE CASCADE,
-        enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        enabled INTEGER NOT NULL DEFAULT 0,
         addons TEXT NOT NULL DEFAULT '[]',
         revision BIGINT NOT NULL DEFAULT 1,
         updated_at BIGINT NOT NULL DEFAULT 0,
