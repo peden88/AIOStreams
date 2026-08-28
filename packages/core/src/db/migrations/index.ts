@@ -22,6 +22,7 @@ import { analyticsIndexes } from './0021_analytics_indexes.js';
 import { animeBuildSources } from './0022_anime_build_sources.js';
 import { linkedAccounts } from './0023_linked_accounts.js';
 import { aioTvPolicies } from './0024_aio_tv_policies.js';
+import { aioTvIdentity } from './0025_aio_tv_identity.js';
 import type { Migration } from './types.js';
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -49,6 +50,7 @@ export const MIGRATIONS: readonly Migration[] = [
   animeBuildSources,
   linkedAccounts,
   aioTvPolicies,
+  aioTvIdentity,
 ];
 
 export type { Migration } from './types.js';
