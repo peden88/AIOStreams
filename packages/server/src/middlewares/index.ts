@@ -6,4 +6,5 @@ export * from './cors.js';
 export * from './ratelimit.js';
 export * from './internal.js';
 export * from './auth.js';
+export * from './aio-tv-access.js';
 export * from './upload.js';
