@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { Request, Router } from 'express';
 import {
+  AIO_TV_DEVICE_SESSION_TTL_SECONDS,
   APIError,
   AioTvPolicyRepository,
   constants,
@@ -286,7 +287,7 @@ router.post('/token', (req, res) => {
         status: 'approved',
         accessToken,
         tokenType: 'Bearer',
-        expiresIn: appConfig.api.sessionTtlSeconds,
+        expiresIn: AIO_TV_DEVICE_SESSION_TTL_SECONDS,
         configUuid,
       },
     })
