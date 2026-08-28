@@ -41,7 +41,7 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
   React.useEffect(() => {
     setEnabled(initial.enabled);
     setAddons(initial.addons);
-  }, [uuid, initial.revision, initial.enabled, initial.addons]);
+  }, [uuid, initial.revision]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -58,7 +58,8 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
       toast.success('AIOtv policy saved.');
       onSaved(policy);
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Failed to save AIOtv policy'),
+    onError: (e: any) =>
+      toast.error(e?.message ?? 'Failed to save AIOtv policy'),
   });
 
   const updateAddon = (
@@ -66,7 +67,9 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
     patch: Partial<AioTvAddonAssignment>
   ) => {
     setAddons((current) =>
-      current.map((addon, i) => (i === index ? { ...addon, ...patch } : addon))
+      current.map((addon, i) =>
+        i === index ? { ...addon, ...patch } : addon
+      )
     );
   };
 
@@ -109,7 +112,9 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
             size="sm"
             intent="gray-outline"
             disabled={addons.length >= 50}
-            onClick={() => setAddons((current) => [...current, emptyAddon()])}
+            onClick={() =>
+              setAddons((current) => [...current, emptyAddon()])
+            }
           >
             Add addon
           </Button>
@@ -123,8 +128,8 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
           <div className="space-y-3">
             {addons.map((addon, index) => (
               <div
-                key={`${index}-${addon.manifestUrl}`}
-                className="rounded-lg border border-[--border]/70 p-3 space-y-2 bg-[--background]/50"
+                key={index}
+                className="rounded-lg border border-[--border]/70 p-3 space-y-2 bg-[--subtle]/20"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-[--muted]">
@@ -161,7 +166,8 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
           {initial.revision > 0 ? (
             <>
               Policy revision {initial.revision}
-              {initial.updatedAt > 0 && ` • ${formatDateTime(new Date(initial.updatedAt).toISOString())}`}
+              {initial.updatedAt > 0 &&
+                ` • ${formatDateTime(new Date(initial.updatedAt).toISOString())}`}
               {initial.updatedBy && ` • ${initial.updatedBy}`}
             </>
           ) : (
@@ -170,7 +176,7 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
         </div>
         <Button
           size="sm"
-          intent="brand-solid"
+          intent="primary"
           loading={save.isPending}
           disabled={save.isPending || hasBlankManifest}
           onClick={() => save.mutate()}
