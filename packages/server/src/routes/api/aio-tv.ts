@@ -38,16 +38,16 @@ router.get('/bootstrap', async (req, res) => {
 
   const policy = await AioTvPolicyRepository.get(device.uuid);
 
-  // A missing policy and a disabled policy intentionally look the same to the
-  // device. This also handles a deleted parent user because the policy FK
-  // cascades away with it.
-  if (!policy.enabled) {
+  // Re-check the administrator-owned identity binding on every bootstrap. A
+  // disable, unbind, rebind to another UUID, or parent-user deletion therefore
+  // revokes an already-issued device token immediately.
+  if (!policy.enabled || policy.identityUsername !== device.username) {
     res.status(403).json(
       createResponse({
         success: false,
         error: {
           code: 'AIO_TV_DISABLED',
-          message: 'AIOtv is no longer enabled for this account',
+          message: 'AIOtv is no longer assigned to this account',
         },
       })
     );
@@ -77,6 +77,7 @@ router.get('/bootstrap', async (req, res) => {
         management: {
           addonMembership: 'server-authoritative',
           catalogOrder: 'device-local',
+          configurationAccess: 'administrator-only',
         },
       },
     })
