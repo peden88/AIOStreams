@@ -14,6 +14,7 @@ export { default as templatesApi } from './templates.js';
 export { default as syncApi } from './sync.js';
 export { default as linkedAccountsApi } from './linked-accounts.js';
 export { default as authApi } from './auth/index.js';
+export { default as aioTvApi } from './aio-tv.js';
 export { default as dashboardApi } from './dashboard/index.js';
 export { default as aioTvDashboardApi } from './dashboard/aio-tv.js';
 export { default as usenetApi } from './usenet.js';
