@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { Router } from 'express';
+import { Request, Router } from 'express';
 import {
   APIError,
   constants,
@@ -50,7 +50,7 @@ function randomUserCode(): string {
   return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
 }
 
-function baseUrl(req: Parameters<typeof router.post>[1] extends never ? never : any): string {
+function baseUrl(req: Request): string {
   return (
     appConfig.bootstrap.baseUrl ||
     `${req.protocol}://${req.get('host')}`
