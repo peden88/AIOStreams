@@ -15,6 +15,7 @@ export interface AioTvAddonAssignment {
 
 export interface AioTvPolicy {
   enabled: boolean;
+  identityUsername: string | null;
   addons: AioTvAddonAssignment[];
   revision: number;
   updatedAt: number;
@@ -34,12 +35,16 @@ const emptyAddon = (): AioTvAddonAssignment => ({
 
 export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
   const [enabled, setEnabled] = React.useState(initial.enabled);
+  const [identityUsername, setIdentityUsername] = React.useState(
+    initial.identityUsername ?? ''
+  );
   const [addons, setAddons] = React.useState<AioTvAddonAssignment[]>(
     initial.addons
   );
 
   React.useEffect(() => {
     setEnabled(initial.enabled);
+    setIdentityUsername(initial.identityUsername ?? '');
     setAddons(initial.addons);
   }, [uuid, initial.revision]);
 
@@ -48,6 +53,7 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
       api<AioTvPolicy>(`PUT /dashboard/users/${uuid}/aio-tv`, {
         body: {
           enabled,
+          identityUsername: identityUsername.trim() || null,
           addons: addons.map((addon) => ({
             name: addon.name.trim(),
             manifestUrl: addon.manifestUrl.trim(),
@@ -55,11 +61,11 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
         },
       }),
     onSuccess: (policy) => {
-      toast.success('AIOtv policy saved.');
+      toast.success('AIOtv account assignment saved.');
       onSaved(policy);
     },
     onError: (e: any) =>
-      toast.error(e?.message ?? 'Failed to save AIOtv policy'),
+      toast.error(e?.message ?? 'Failed to save AIOtv account assignment'),
   });
 
   const updateAddon = (
@@ -83,11 +89,11 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
     <Card className="p-4 space-y-4 border-brand/30 bg-brand/5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="font-semibold">AIOtv</div>
+          <div className="font-semibold">AIOtv account</div>
           <p className="text-xs text-[--muted] mt-1 max-w-2xl">
-            This server-side policy is authoritative for the TV client. Assigned
-            addons can be installed or removed by the AIOtv sync service; users
-            cannot change addon membership on the device.
+            Pre-provision this AIOStreams profile for one Pocket ID identity.
+            The user signs into AIOtv with Pocket ID and never needs the
+            AIOStreams UUID, password, or configuration page.
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -101,9 +107,29 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
       </div>
 
       <div className="space-y-2">
+        <div>
+          <div className="text-sm font-medium">Pocket ID identity</div>
+          <div className="text-xs text-[--muted] mb-2">
+            Enter the exact username returned by your Pocket ID/OIDC username
+            claim. One identity can be assigned to only one AIOStreams profile.
+          </div>
+          <TextInput
+            value={identityUsername}
+            onValueChange={setIdentityUsername}
+            placeholder="john.smith"
+          />
+        </div>
+
+        <div className="rounded-lg border border-[--border]/70 bg-[--subtle]/20 p-3 text-xs text-[--muted]">
+          Assigned AIOStreams UUID:{' '}
+          <span className="font-mono text-[--foreground]">{uuid}</span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-medium">Assigned addons</div>
+            <div className="text-sm font-medium">Managed addons</div>
             <div className="text-xs text-[--muted]">
               {addons.length} of 50 assigned
             </div>
@@ -171,7 +197,7 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
               {initial.updatedBy && ` • ${initial.updatedBy}`}
             </>
           ) : (
-            'No AIOtv policy has been saved for this user yet.'
+            'No AIOtv assignment has been saved for this profile yet.'
           )}
         </div>
         <Button
@@ -181,7 +207,7 @@ export function AioTvPolicyEditor({ uuid, initial, onSaved }: Props) {
           disabled={save.isPending || hasBlankManifest}
           onClick={() => save.mutate()}
         >
-          Save AIOtv policy
+          Save AIOtv account
         </Button>
       </div>
     </Card>
