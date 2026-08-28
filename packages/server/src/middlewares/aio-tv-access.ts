@@ -9,15 +9,16 @@ import {
  * A Pocket ID/OIDC identity that the administrator has bound to an AIOtv
  * profile is a managed end-user identity, not a configuration owner.
  *
- * Admins are deliberately exempt so the instance owner can bind a test profile
- * to their own identity without locking themselves out of management screens.
+ * The binding itself is authoritative. We do not exempt a session merely
+ * because its OIDC permission set happens to contain admin; a managed identity
+ * must never regain configuration access through an overly broad group mapping.
  */
 export async function denyManagedAioTvIdentity(
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (!req.user || req.user.isAdmin) {
+  if (!req.user) {
     next();
     return;
   }
