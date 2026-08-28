@@ -6,6 +6,11 @@ export {
   type AdminUserDetail,
 } from './repositories/admin-users.js';
 export {
+  AioTvPolicyRepository,
+  type AioTvAddonAssignment,
+  type AioTvUserPolicy,
+} from './repositories/aio-tv.js';
+export {
   SettingsRepository,
   type SettingRow,
 } from './repositories/settings.js';

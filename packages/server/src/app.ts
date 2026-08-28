@@ -1,4 +1,4 @@
-﻿import express, { Express } from 'express';
+import express, { Express } from 'express';
 import {
   userApi,
   profilesApi,
@@ -16,7 +16,9 @@ import {
   syncApi,
   linkedAccountsApi,
   authApi,
+  aioTvApi,
   dashboardApi,
+  aioTvDashboardApi,
   usenetApi,
 } from './routes/api/index.js';
 import {
@@ -180,7 +182,9 @@ apiRouter.use('/templates', templatesApi);
 apiRouter.use('/sync', syncApi);
 apiRouter.use('/linked-accounts', linkedAccountsRateLimiter, linkedAccountsApi);
 apiRouter.use('/auth', authApi);
+apiRouter.use('/aio-tv', aioTvApi);
 apiRouter.use('/dashboard', dashboardApi);
+apiRouter.use('/dashboard', aioTvDashboardApi);
 apiRouter.use('/usenet', usenetApi);
 apiRouter.use('/sabnzbd', sabnzbdRouter);
 apiRouter.use('/newznab', createNabRouter('newznab'));

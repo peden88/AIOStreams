@@ -1,5 +1,5 @@
-export { default as userApi } from './user.js';
-export { default as profilesApi } from './profiles.js';
+export { default as userApi } from './managed-user.js';
+export { default as profilesApi } from './managed-profiles.js';
 export { default as healthApi } from './health.js';
 export { default as statusApi } from './status.js';
 export { default as formatApi } from './format.js';
@@ -14,5 +14,7 @@ export { default as templatesApi } from './templates.js';
 export { default as syncApi } from './sync.js';
 export { default as linkedAccountsApi } from './linked-accounts.js';
 export { default as authApi } from './auth/index.js';
+export { default as aioTvApi } from './aio-tv.js';
 export { default as dashboardApi } from './dashboard/index.js';
+export { default as aioTvDashboardApi } from './dashboard/aio-tv.js';
 export { default as usenetApi } from './usenet.js';

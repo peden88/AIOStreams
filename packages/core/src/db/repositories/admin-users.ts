@@ -6,6 +6,10 @@
 import { getDb } from '../db.js';
 import { sql, raw, join } from '../sql.js';
 import { hmac } from '../../analytics/index.js';
+import {
+  AioTvPolicyRepository,
+  type AioTvUserPolicy,
+} from './aio-tv.js';
 
 export interface AdminUserListItem {
   uuid: string;
@@ -13,10 +17,13 @@ export interface AdminUserListItem {
   updatedAt: string;
   accessedAt: string;
   requests24h: number;
+  aioTvEnabled: boolean;
+  aioTvAddonCount: number;
 }
 
 export interface AdminUserDetail extends AdminUserListItem {
   recentErrorStages: Array<{ stage: string; count: number }>;
+  aioTv: AioTvUserPolicy;
 }
 
 const toUtcString = (v: string | Date | null | undefined): string => {
@@ -26,10 +33,20 @@ const toUtcString = (v: string | Date | null | undefined): string => {
 };
 
 const SORTS: Record<string, string> = {
-  created_at: 'created_at',
-  accessed_at: 'accessed_at',
-  updated_at: 'updated_at',
+  created_at: 'users.created_at',
+  accessed_at: 'users.accessed_at',
+  updated_at: 'users.updated_at',
 };
+
+function addonCount(rawValue: string | null | undefined): number {
+  if (!rawValue) return 0;
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export const AdminUsersRepository = {
   async list(opts: {
@@ -43,9 +60,11 @@ export const AdminUsersRepository = {
     const limit = Math.min(Math.max(opts.limit || 25, 1), 200);
     const page = Math.max(opts.page || 1, 1);
     const offset = (page - 1) * limit;
-    const sortCol = SORTS[opts.sort ?? 'created_at'] ?? 'created_at';
+    const sortCol = SORTS[opts.sort ?? 'created_at'] ?? 'users.created_at';
     const dir = opts.dir === 'asc' ? 'ASC' : 'DESC';
-    const where = opts.q ? sql`WHERE uuid LIKE ${'%' + opts.q + '%'}` : sql``;
+    const where = opts.q
+      ? sql`WHERE users.uuid LIKE ${'%' + opts.q + '%'}`
+      : sql``;
 
     const total = await db.count(
       sql`SELECT COUNT(*) AS count FROM users ${where}`
@@ -55,8 +74,15 @@ export const AdminUsersRepository = {
       created_at: string | Date;
       updated_at: string | Date;
       accessed_at: string | Date;
+      aio_tv_enabled: number | string | boolean | null;
+      aio_tv_addons: string | null;
     }>(
-      sql`SELECT uuid, created_at, updated_at, accessed_at FROM users
+      sql`SELECT users.uuid, users.created_at, users.updated_at, users.accessed_at,
+                 aio_tv_user_policies.enabled AS aio_tv_enabled,
+                 aio_tv_user_policies.addons AS aio_tv_addons
+          FROM users
+          LEFT JOIN aio_tv_user_policies
+            ON aio_tv_user_policies.user_uuid = users.uuid
           ${where}
           ORDER BY ${raw(sortCol)} ${raw(dir)}
           LIMIT ${limit} OFFSET ${offset}`
@@ -75,6 +101,11 @@ export const AdminUsersRepository = {
         updatedAt: toUtcString(r.updated_at),
         accessedAt: toUtcString(r.accessed_at),
         requests24h: Number(c[0]?.c ?? 0),
+        aioTvEnabled:
+          r.aio_tv_enabled === true ||
+          r.aio_tv_enabled === 1 ||
+          r.aio_tv_enabled === '1',
+        aioTvAddonCount: addonCount(r.aio_tv_addons),
       });
     }
     return { items, total, page, limit, pages: Math.ceil(total / limit) };
@@ -93,25 +124,31 @@ export const AdminUsersRepository = {
     if (!r) return null;
     const h = hmac(uuid);
     const cutoff = Date.now() - 86_400_000;
-    const c = await db.query<{ c: number | string }>(
-      sql`SELECT COUNT(*) AS c FROM analytics_events
-          WHERE uuid_hash = ${h} AND ts >= ${cutoff}`
-    );
-    const errs = await db.query<{ error_stage: string; c: number | string }>(
-      sql`SELECT error_stage, COUNT(*) AS c FROM analytics_events
-          WHERE uuid_hash = ${h} AND status = 'error' AND error_stage IS NOT NULL
-          GROUP BY error_stage ORDER BY c DESC LIMIT 10`
-    );
+    const [c, errs, aioTv] = await Promise.all([
+      db.query<{ c: number | string }>(
+        sql`SELECT COUNT(*) AS c FROM analytics_events
+            WHERE uuid_hash = ${h} AND ts >= ${cutoff}`
+      ),
+      db.query<{ error_stage: string; c: number | string }>(
+        sql`SELECT error_stage, COUNT(*) AS c FROM analytics_events
+            WHERE uuid_hash = ${h} AND status = 'error' AND error_stage IS NOT NULL
+            GROUP BY error_stage ORDER BY c DESC LIMIT 10`
+      ),
+      AioTvPolicyRepository.get(uuid),
+    ]);
     return {
       uuid: r.uuid,
       createdAt: toUtcString(r.created_at),
       updatedAt: toUtcString(r.updated_at),
       accessedAt: toUtcString(r.accessed_at),
       requests24h: Number(c[0]?.c ?? 0),
+      aioTvEnabled: aioTv.enabled,
+      aioTvAddonCount: aioTv.addons.length,
       recentErrorStages: errs.map((e) => ({
         stage: e.error_stage,
         count: Number(e.c),
       })),
+      aioTv,
     };
   },
 
