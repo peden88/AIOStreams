@@ -16,11 +16,13 @@ import {
 } from '../../../middlewares/auth.js';
 import { createResponse } from '../../../utils/responses.js';
 import oidcRouter from './oidc.js';
+import deviceRouter from './device.js';
 
 const router: Router = Router();
 const logger = createLogger('server');
 
 router.use(oidcRouter);
+router.use('/device', deviceRouter);
 
 // POST /auth/login — validate credentials, set the session cookie.
 router.post('/login', loginRateLimiter, (req, res, next) => {
