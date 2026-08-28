@@ -12,6 +12,7 @@ export * from './crypto.js';
 export * from './permissions.js';
 export * from './config-alias.js';
 export * from './auth.js';
+export * from './aio-tv-auth.js';
 export * from './oidc.js';
 export * from './http.js';
 export * from './github.js';
