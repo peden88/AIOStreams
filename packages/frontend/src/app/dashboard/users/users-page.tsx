@@ -19,6 +19,10 @@ import { useDebounce } from '@/hooks/debounce';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { copyToClipboard } from '@/utils/clipboard';
+import {
+  AioTvPolicyEditor,
+  type AioTvPolicy,
+} from './aio-tv-policy-editor';
 
 interface UserItem {
   uuid: string;
@@ -26,6 +30,8 @@ interface UserItem {
   updatedAt: string;
   accessedAt: string;
   requests24h: number;
+  aioTvEnabled: boolean;
+  aioTvAddonCount: number;
 }
 interface UserList {
   items: UserItem[];
@@ -36,6 +42,7 @@ interface UserList {
 }
 interface UserDetail extends UserItem {
   recentErrorStages: { stage: string; count: number }[];
+  aioTv: AioTvPolicy;
 }
 
 const PAGE_SIZES = ['10', '25', '50', '100'];
@@ -126,6 +133,20 @@ export function UsersPage() {
     } catch (e: any) {
       toast.error(e?.message ?? 'Failed to load user');
     }
+  };
+
+  const handleAioTvSaved = (policy: AioTvPolicy) => {
+    setDetail((current) =>
+      current
+        ? {
+            ...current,
+            aioTv: policy,
+            aioTvEnabled: policy.enabled,
+            aioTvAddonCount: policy.addons.length,
+          }
+        : current
+    );
+    qc.invalidateQueries({ queryKey: ['dashboard', 'users'] });
   };
 
   const d = list.data;
@@ -257,6 +278,7 @@ export function UsersPage() {
                         {sort === c ? (dir === 'asc' ? ' ▲' : ' ▼') : ''}
                       </th>
                     ))}
+                    <th className="p-3">AIOtv</th>
                     <th className="p-3 text-right">Req 24h</th>
                     <th className="p-3 text-right">Actions</th>
                   </tr>
@@ -288,6 +310,16 @@ export function UsersPage() {
                       </td>
                       <td className="p-3">{formatDateTime(u.createdAt)}</td>
                       <td className="p-3">{formatDateTime(u.accessedAt)}</td>
+                      <td className="p-3">
+                        {u.aioTvEnabled ? (
+                          <span className="inline-flex items-center rounded-full border border-brand/30 bg-brand/10 px-2 py-1 text-xs text-[--brand]">
+                            Enabled · {u.aioTvAddonCount}{' '}
+                            {u.aioTvAddonCount === 1 ? 'addon' : 'addons'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[--muted]">Off</span>
+                        )}
+                      </td>
                       <td className="p-3 text-right tabular-nums">
                         {u.requests24h}
                       </td>
@@ -317,7 +349,7 @@ export function UsersPage() {
                   {d && pageItems.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="p-8 text-center text-[--muted]"
                       >
                         No users found.
@@ -400,7 +432,7 @@ export function UsersPage() {
         title="User detail"
       >
         {detail && (
-          <div className="space-y-3 text-sm">
+          <div className="space-y-4 text-sm">
             <div>
               <div className="text-xs text-[--muted]">UUID</div>
               <div className="font-mono break-all">{detail.uuid}</div>
@@ -423,6 +455,13 @@ export function UsersPage() {
                 {detail.requests24h}
               </div>
             </div>
+
+            <AioTvPolicyEditor
+              uuid={detail.uuid}
+              initial={detail.aioTv}
+              onSaved={handleAioTvSaved}
+            />
+
             <div>
               <div className="text-xs text-[--muted] mb-1">
                 Recent error stages
