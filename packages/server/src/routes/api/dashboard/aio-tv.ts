@@ -63,14 +63,31 @@ function parseAssignments(value: unknown):
       };
     }
 
-    // Exact manifest URL is the assignment identity. Ignore duplicates while
-    // preserving the first occurrence/order chosen by the administrator.
     if (seen.has(manifestUrl)) continue;
     seen.add(manifestUrl);
     addons.push({ name, manifestUrl });
   }
 
   return { ok: true, addons };
+}
+
+function parseIdentityUsername(value: unknown):
+  | { ok: true; identityUsername: string | null }
+  | { ok: false; message: string } {
+  if (value === null || value === undefined || value === '') {
+    return { ok: true, identityUsername: null };
+  }
+  if (typeof value !== 'string') {
+    return { ok: false, message: 'identityUsername must be a string or null' };
+  }
+  const identityUsername = value.trim();
+  if (!identityUsername) {
+    return { ok: true, identityUsername: null };
+  }
+  if (identityUsername.length > 255) {
+    return { ok: false, message: 'identityUsername is too long' };
+  }
+  return { ok: true, identityUsername };
 }
 
 // GET /dashboard/users/:uuid/aio-tv
@@ -91,9 +108,6 @@ router.get('/users/:uuid/aio-tv', async (req, res) => {
 });
 
 // PUT /dashboard/users/:uuid/aio-tv
-// Replaces the administrator-owned AIOtv assignment atomically from the API
-// consumer's perspective. The repository increments revision on every save so
-// devices can cheaply determine whether reconciliation is required.
 router.put('/users/:uuid/aio-tv', async (req, res) => {
   const user = await AdminUsersRepository.get(req.params.uuid);
   if (!user) {
@@ -115,6 +129,33 @@ router.put('/users/:uuid/aio-tv', async (req, res) => {
     );
   }
 
+  const identity = parseIdentityUsername(body.identityUsername);
+  if (!identity.ok) {
+    return res.status(400).json(
+      createResponse({
+        success: false,
+        error: { code: 'BAD_REQUEST', message: identity.message },
+      })
+    );
+  }
+
+  if (identity.identityUsername) {
+    const existing = await AioTvPolicyRepository.getByIdentity(
+      identity.identityUsername
+    );
+    if (existing && existing.uuid !== req.params.uuid) {
+      return res.status(409).json(
+        createResponse({
+          success: false,
+          error: {
+            code: 'IDENTITY_ALREADY_ASSIGNED',
+            message: `Pocket ID identity "${identity.identityUsername}" is already assigned to another AIOStreams profile`,
+          },
+        })
+      );
+    }
+  }
+
   const parsed = parseAssignments(body.addons);
   if (!parsed.ok) {
     return res.status(400).json(
@@ -129,7 +170,11 @@ router.put('/users/:uuid/aio-tv', async (req, res) => {
     (req as { user?: { username?: string } }).user?.username ?? 'admin';
   const policy = await AioTvPolicyRepository.set(
     req.params.uuid,
-    { enabled: body.enabled, addons: parsed.addons },
+    {
+      enabled: body.enabled,
+      identityUsername: identity.identityUsername,
+      addons: parsed.addons,
+    },
     username
   );
 
@@ -137,6 +182,7 @@ router.put('/users/:uuid/aio-tv', async (req, res) => {
     {
       uuid: req.params.uuid,
       enabled: policy.enabled,
+      identityAssigned: !!policy.identityUsername,
       addonCount: policy.addons.length,
       revision: policy.revision,
       username,
