@@ -20,6 +20,7 @@ interface AioTvPolicyRow {
   revision: number | string;
   updated_at: number | string;
   updated_by: string | null;
+  [k: string]: unknown;
 }
 
 const EMPTY_POLICY: AioTvUserPolicy = {
