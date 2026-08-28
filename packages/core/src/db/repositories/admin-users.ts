@@ -33,9 +33,9 @@ const toUtcString = (v: string | Date | null | undefined): string => {
 };
 
 const SORTS: Record<string, string> = {
-  created_at: 'created_at',
-  accessed_at: 'accessed_at',
-  updated_at: 'updated_at',
+  created_at: 'users.created_at',
+  accessed_at: 'users.accessed_at',
+  updated_at: 'users.updated_at',
 };
 
 function addonCount(rawValue: string | null | undefined): number {
@@ -60,9 +60,11 @@ export const AdminUsersRepository = {
     const limit = Math.min(Math.max(opts.limit || 25, 1), 200);
     const page = Math.max(opts.page || 1, 1);
     const offset = (page - 1) * limit;
-    const sortCol = SORTS[opts.sort ?? 'created_at'] ?? 'created_at';
+    const sortCol = SORTS[opts.sort ?? 'created_at'] ?? 'users.created_at';
     const dir = opts.dir === 'asc' ? 'ASC' : 'DESC';
-    const where = opts.q ? sql`WHERE uuid LIKE ${'%' + opts.q + '%'}` : sql``;
+    const where = opts.q
+      ? sql`WHERE users.uuid LIKE ${'%' + opts.q + '%'}`
+      : sql``;
 
     const total = await db.count(
       sql`SELECT COUNT(*) AS count FROM users ${where}`
