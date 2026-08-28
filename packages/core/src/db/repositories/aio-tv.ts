@@ -75,9 +75,6 @@ function toPolicy(row: AioTvPolicyRow | null): AioTvUserPolicy {
   };
 }
 
-const POLICY_COLUMNS =
-  'identity_username, enabled, addons, revision, updated_at, updated_by';
-
 export class AioTvPolicyRepository {
   static async get(userUuid: string): Promise<AioTvUserPolicy> {
     const row = await getDb().maybeOne<AioTvPolicyRow>(
@@ -111,7 +108,10 @@ export class AioTvPolicyRepository {
     updatedBy: string
   ): Promise<AioTvUserPolicy> {
     const db = getDb();
-    const current = await db.maybeOne<{ revision: number | string; [k: string]: unknown }>(
+    const current = await db.maybeOne<{
+      revision: number | string;
+      [k: string]: unknown;
+    }>(
       sql`SELECT revision FROM aio_tv_user_policies WHERE user_uuid = ${userUuid}`
     );
     const now = Date.now();
