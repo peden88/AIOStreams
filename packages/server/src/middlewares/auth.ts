@@ -36,6 +36,22 @@ function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
+/** Read a signed AIOStreams session from Authorization: Bearer <token>. */
+function readBearerToken(req: Request): string | undefined {
+  const header = req.headers.authorization;
+  if (!header) return undefined;
+  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  return match?.[1]?.trim() || undefined;
+}
+
+/**
+ * Browser sessions use the existing HttpOnly cookie. Native clients such as
+ * AIO TV use the exact same signed session format as a bearer token.
+ */
+function readSessionToken(req: Request): string | undefined {
+  return readCookie(req, SESSION_COOKIE) ?? readBearerToken(req);
+}
+
 export function setSessionCookie(
   res: Response,
   user: { username: string; permissions?: Permission[]; source?: SessionSource }
@@ -119,15 +135,16 @@ export function clearOidcStateCookie(res: Response): void {
 }
 
 /**
- * Reads the session cookie if present and attaches req.user. Never rejects —
- * downstream middleware decides whether a session is required.
+ * Reads a browser cookie or native-client bearer token if present and attaches
+ * req.user. Never rejects — downstream middleware decides whether a session is
+ * required.
  */
 export function attachSession(
   req: Request,
   _res: Response,
   next: NextFunction
 ): void {
-  const session = verifySession(readCookie(req, SESSION_COOKIE));
+  const session = verifySession(readSessionToken(req));
   if (session) {
     req.user = session;
   }
@@ -163,7 +180,7 @@ export function requireSession(
   next: NextFunction
 ): void {
   if (!req.user) {
-    const session = verifySession(readCookie(req, SESSION_COOKIE));
+    const session = verifySession(readSessionToken(req));
     if (session) {
       req.user = session;
     }
