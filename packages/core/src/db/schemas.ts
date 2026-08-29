@@ -2,6 +2,7 @@ import { z } from 'zod';
 import * as constants from '../utils/constants.js';
 import { config } from '../config/index.js';
 import { WD1_KEY_REGEX } from '../release-blocklist/keys.js';
+import { isUnsafeRemoteUrl } from '../utils/url-safety.js';
 
 /**
  * Stream Expression Language string with a runtime-configurable maximum length
@@ -165,10 +166,24 @@ const BitrateFilterOptions = z.object({
   resolution: z.partialRecord(Resolutions, SizeFilter).optional(),
 });
 
+// Refused rather than accepted-and-ignored: the gate treats an address it cannot
+// probe as healthy, so a private one would save and never skip anything. The
+// literal-host check only; the gate applies the DNS-resolving one before it
+// fetches.
+const HealthCheckUrl = z
+  .string()
+  .url()
+  .refine((url) => !isUnsafeRemoteUrl(url), {
+    message:
+      'Must be a public http(s) address. Loopback, private and link-local addresses are refused.',
+  });
+
 const ServiceSchema = z.object({
   id: ServiceIds,
   enabled: z.boolean().optional(),
   credentials: z.record(z.string().min(1), z.string()),
+  // Skipped while this URL answers 5xx. Absent means never skipped.
+  healthCheckUrl: HealthCheckUrl.optional(),
 });
 
 export type Service = z.infer<typeof ServiceSchema>;
@@ -202,6 +217,9 @@ const AddonSchema = z.object({
   // forceToTop: z.boolean().optional(),
   pinPosition: z.enum(['top', 'bottom']).optional(),
   serviceWrapped: z.boolean().optional(),
+  // For an addon whose dependency cannot be inferred, such as a custom manifest
+  // carrying a provider's key. Skipped while this URL answers 5xx.
+  healthCheckUrl: HealthCheckUrl.optional(),
   headers: z.record(z.string().min(1), z.string().min(1)).optional(),
   ip: z.string().optional(),
 });
@@ -298,6 +316,7 @@ const OptionDefinition = z.looseObject({
     'subsection',
     'custom-nntp-servers',
     'nab-endpoint',
+    'health-check-url',
   ]),
   nab: z
     .object({
@@ -1469,6 +1488,9 @@ const PresetMinimalMetadataSchema = z.object({
   OPTIONS: z.array(OptionDefinition),
   BUILTIN: z.boolean().optional(),
   CATEGORY: z.enum(constants.PRESET_CATEGORIES).optional(),
+  // Absent means the preset gets a health check option. Only false withholds
+  // it, for a preset whose health is decided per server rather than per addon.
+  SUPPORTS_HEALTH_CHECK: z.boolean().optional(),
 });
 
 const PresetMetadataSchema = PresetMinimalMetadataSchema.extend({
@@ -1561,6 +1583,9 @@ const StatusResponseSchema = z.object({
         knownNames: z.array(z.string()),
         signUpText: z.string(),
         credentials: z.array(OptionDefinition),
+        // Not optional: the default lives in the projection, so a missing value
+        // here fails validation loudly rather than hiding every control.
+        supportsHealthCheck: z.boolean(),
       })
     ),
     limits: z.object({
