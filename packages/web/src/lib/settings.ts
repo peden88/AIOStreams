@@ -451,7 +451,7 @@ function record<K extends string, V>(
   >;
 }
 
-export const MAX_CUSTOM_CSS = 20_000;
+export const MAX_CUSTOM_CSS = 30_000;
 
 export const CUSTOM_CSS_OFF = new URLSearchParams(window.location.search).has(
   'safe'

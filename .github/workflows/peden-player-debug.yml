@@ -1,0 +1,69 @@
+name: Peden Custom Player Debug
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/web/src/components/player/keys.ts'
+      - 'packages/web/src/lib/settings.ts'
+      - '.github/workflows/peden-player-debug.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: peden-player-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter "@aiostreams/web..."
+      - run: pnpm -F @aiostreams/web build:standalone
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk,cargo-about@0.9.2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/android/natives/rust
+      - name: Install Android SDK, NDK and CMake
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses >/dev/null
+          pinned() { sed -n "s/^$1 = \"\\(.*\\)\"/\\1/p" packages/android/gradle/libs.versions.toml; }
+          "$sdkmanager" --install "platforms;android-37.2" "ndk;$(pinned android-ndk)" "cmake;$(pinned android-cmake)" >/dev/null
+      - name: Build unsigned-release-independent debug APKs
+        working-directory: packages/android
+        run: ./gradlew --no-configuration-cache :app:assembleDebug
+      - name: Save debug APK artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: peden-custom-player-debug-apks
+          path: packages/android/app/build/outputs/apk/debug/*-debug.apk
+          compression-level: 0
+      - name: Publish directly downloadable APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=peden-custom-player-debug
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "Peden Custom Player Debug" --notes "Debug APKs: Select-to-pause and 30,000-character custom CSS." --prerelease --latest=false
+          fi
+          gh release upload "$tag" packages/android/app/build/outputs/apk/debug/*-debug.apk --clobber

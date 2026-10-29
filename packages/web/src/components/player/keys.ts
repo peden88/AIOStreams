@@ -161,6 +161,9 @@ export function usePlayerKeys(keys: PlayerKeys): void {
           )
         )
           return call(k().skipSegment);
+        // Select on an unfocused player toggles playback on its first press.
+        // Focused controls and an active scrub/skip keep their own actions.
+        k().togglePlay();
         focusControls();
       },
       'player.playPause': () => {
