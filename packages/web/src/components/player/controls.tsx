@@ -826,7 +826,7 @@ function PlayerTime({
       data-ui="player-time"
       data-focus="own"
       dir="ltr"
-      title={showLeft ? t`Show time played` : t`Show time left`}
+      aria-label={showLeft ? t`Show time played` : t`Show time left`}
       className={cn(
         TIME,
         '-mx-1.5 rounded-md px-1.5 py-0.5 text-gray-200 transition-colors hover:text-white',

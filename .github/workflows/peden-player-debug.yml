@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'packages/web/src/components/player/keys.ts'
+      - 'packages/web/src/components/player/**'
       - 'packages/web/src/lib/settings.ts'
       - '.github/workflows/peden-player-debug.yml'
   workflow_dispatch:
