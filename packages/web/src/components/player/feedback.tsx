@@ -42,7 +42,7 @@ export function useToggleFlash(): [React.ReactNode, (paused: boolean) => void] {
   const show = React.useCallback((wasPaused: boolean) => {
     clearTimeout(timer.current);
     setFlash({ key: Date.now(), playing: wasPaused });
-    timer.current = setTimeout(() => setFlash(null), 200);
+    timer.current = setTimeout(() => setFlash(null), 500);
   }, []);
   const Icon = flash?.playing ? PiPlayDuotone : PiPauseDuotone;
   const node = flash && (
@@ -72,7 +72,7 @@ export function useSeekFlash(): [React.ReactNode, (deltaMs: number) => void] {
       key: Date.now(),
       ms: f && f.ms < 0 === deltaMs < 0 ? f.ms + deltaMs : deltaMs,
     }));
-    timer.current = setTimeout(() => setFlash(null), 700);
+    timer.current = setTimeout(() => setFlash(null), 1200);
   }, []);
   const back = !!flash && flash.ms < 0;
   const Icon = back ? LuRotateCcw : LuRotateCw;
