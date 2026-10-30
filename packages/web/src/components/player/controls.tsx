@@ -172,8 +172,19 @@ export function PlayerControls({
     if (text) showNotice(text, 'failed' in syncOutcome ? 4000 : 2000);
   }, [syncOutcome, showNotice]);
   const togglePlay = () => {
-    showFlash(latest.current.state.paused);
+    const wasPaused = latest.current.state.paused;
+    showFlash(wasPaused);
     latest.current.togglePlay();
+    if (wasPaused) {
+      // Resume straight into the video, without leaving a focused hidden control.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && root.current?.contains(focused))
+        focused.blur();
+      hide();
+    } else {
+      // Pausing should leave the controls available for navigation.
+      wake();
+    }
   };
 
   const [seekStep] = useSetting(settings.controls.seekStep);
