@@ -129,6 +129,13 @@ export function PlayerControls({
     resume?: boolean;
   } | null>(null);
   const scrubbing = React.useRef(scrub);
+  // Suppress the idle pause overlay during the asynchronous resume transition.
+  const [resumePending, setResumePending] = React.useState(false);
+  React.useEffect(() => {
+    if (!state.paused && resumePending) {
+      setResumePending(false);
+    }
+  }, [state.paused, resumePending]);
   // Until the first frame only Back works; a player in its own window is watched there.
   const ready = state.started || !!player.external;
   const busy =
@@ -144,6 +151,7 @@ export function PlayerControls({
     !player.external &&
     !locked &&
     state.paused &&
+    !resumePending &&
     idle &&
     !busy &&
     !state.error &&
@@ -176,12 +184,14 @@ export function PlayerControls({
     showFlash(wasPaused);
     latest.current.togglePlay();
     if (wasPaused) {
+      setResumePending(true);
       // Resume straight into the video, without leaving a focused hidden control.
       const focused = document.activeElement;
       if (focused instanceof HTMLElement && root.current?.contains(focused))
         focused.blur();
       hide();
     } else {
+        setResumePending(false);
       // Pausing should leave the controls available for navigation.
       wake();
     }
