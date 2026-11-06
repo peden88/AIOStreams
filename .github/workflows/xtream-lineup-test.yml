@@ -1,6 +1,7 @@
 name: Xtream Lineup Test Image
 
-# Never publish to the upstream project's registry and never overwrite latest/nightly.
+# Publish to a dedicated GHCR package: the existing aiostreams package denied write_package.
+# Never overwrite upstream registry images, latest or nightly.
 on:
   push:
     branches:
@@ -58,8 +59,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/aiostreams:xtream-lineup-test
-            ghcr.io/${{ github.repository_owner }}/aiostreams:xtream-lineup-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/aiostreams-xtream-lineup-test:xtream-lineup-test
+            ghcr.io/${{ github.repository_owner }}/aiostreams-xtream-lineup-test:xtream-lineup-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
