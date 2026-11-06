@@ -4,6 +4,12 @@ import { config as appConfig } from '../../config/index.js';
 import { getSimpleTextHash } from '../../utils/index.js';
 import { XtreamClient } from './api.js';
 import {
+  type XtreamLineupRules,
+  XtreamLineupRulesSchema,
+  managedLineup,
+  visibleGroupNames,
+} from './lineup-manager.js';
+import {
   type Lineup,
   channelCount,
   groupsOf,
@@ -26,6 +32,7 @@ export const XtreamConfigSchema = z.object({
   server: z.string().min(1),
   username: z.string().min(1),
   password: z.string().min(1),
+  lineup: XtreamLineupRulesSchema.optional(),
 });
 export type XtreamConfig = z.infer<typeof XtreamConfigSchema>;
 
@@ -68,17 +75,19 @@ function parseExtras(extras?: string): Record<string, string> {
 
 export class XtreamAddon {
   private readonly client: XtreamClient;
+  private readonly rules: XtreamLineupRules;
   /** Per account, so two logins in one config keep their channels apart. */
   private readonly prefix: string;
 
   constructor(config: unknown) {
     const login = XtreamConfigSchema.parse(config);
     this.client = new XtreamClient(login);
+    this.rules = XtreamLineupRulesSchema.parse(login.lineup ?? {});
     this.prefix = `xtream.${getSimpleTextHash(login.username).slice(0, 8)}:`;
   }
 
   async getManifest(): Promise<Manifest> {
-    const groups = await groupsOf(this.client);
+    const groups = visibleGroupNames(await groupsOf(this.client), this.rules);
     return {
       id: `aiostreams.${this.prefix.slice(0, -1)}`,
       version: '1.0.0',
@@ -116,31 +125,27 @@ export class XtreamAddon {
       throw new Error(`Unknown catalog ${type}/${id}`);
     const { genre, skip, date, ids } = parseExtras(extras);
     const lineup = await lineupOf(this.client);
-    const indexes: number[] = [];
+    const view = managedLineup(lineup, this.rules);
+    let indexes: number[];
     if (ids) {
-      for (const id of ids.split(',').slice(0, MAX_IDS)) {
-        const index = this.indexOf(lineup, id);
-        if (index >= 0) indexes.push(index);
-      }
+      indexes = ids
+        .split(',')
+        .slice(0, MAX_IDS)
+        .map((id) => this.indexOf(lineup, id))
+        .filter((index) => index >= 0 && view.visible.has(index));
     } else {
-      let members: Int32Array | undefined;
-      if (genre) {
-        members = lineup.members[lineup.groups.indexOf(genre)];
-        if (!members) return { metas: [] };
-      }
-      const total = members ? members.length : channelCount(lineup);
+      const available = genre ? (view.byGroup.get(genre) ?? []) : view.indices;
       const start = Math.max(0, Number(skip) || 0);
-      for (let at = start; at < Math.min(total, start + PAGE_SIZE); at++)
-        indexes.push(members ? members[at] : at);
+      indexes = available.slice(start, start + PAGE_SIZE);
     }
 
     const from = date ? Date.parse(`${date}T00:00:00Z`) / 1000 : NaN;
     if (Number.isNaN(from))
-      return { metas: indexes.map((i) => this.preview(lineup, i)) };
+      return { metas: indexes.map((i) => this.preview(lineup, i, view.firstGroup.get(i))) };
     const guides = await this.schedules(lineup, indexes, from, from + DAY);
     return {
       metasDetailed: indexes.map((i) => ({
-        ...this.preview(lineup, i),
+        ...this.preview(lineup, i, view.firstGroup.get(i)),
         videos: this.programmes(lineup, i, guides, from, from + DAY),
       })),
     };
@@ -149,10 +154,12 @@ export class XtreamAddon {
   async getMeta(type: string, id: string): Promise<Meta> {
     const lineup = await lineupOf(this.client);
     const index = this.indexOf(lineup, id);
-    if (type !== 'tv' || index < 0) throw new Error(`Unknown channel ${id}`);
+    const view = managedLineup(lineup, this.rules);
+    if (type !== 'tv' || index < 0 || !view.visible.has(index))
+      throw new Error(`Unknown channel ${id}`);
     const guides = await this.schedules(lineup, [index], 0, Infinity);
     return {
-      ...this.preview(lineup, index),
+      ...this.preview(lineup, index, view.firstGroup.get(index)),
       videos: this.programmes(lineup, index, guides, 0, Infinity),
     };
   }
@@ -162,7 +169,8 @@ export class XtreamAddon {
     if (type !== 'tv' || !ref) return [];
     const lineup = await lineupOf(this.client);
     const index = indexOfStream(lineup, ref.streamId);
-    if (index < 0) return [];
+    if (index < 0 || !managedLineup(lineup, this.rules).visible.has(index))
+      return [];
     if (ref.start !== undefined) {
       const now = Date.now() / 1000;
       const days = lineup.archiveDays[index];
@@ -210,14 +218,50 @@ export class XtreamAddon {
     return { streamId, start, end };
   }
 
+  /** Raw, paginated provider data for the configuration editor; never includes passwords. */
+  async getLineupPreview(options: {
+    group?: string;
+    search?: string;
+    offset?: number;
+    limit?: number;
+  }) {
+    const lineup = await lineupOf(this.client);
+    const offset = Math.max(0, Math.floor(options.offset ?? 0));
+    const limit = Math.min(100, Math.max(1, Math.floor(options.limit ?? 100)));
+    const search = options.search?.trim().toLowerCase() ?? '';
+    const groupIndex = options.group
+      ? lineup.groups.indexOf(options.group)
+      : -1;
+    const source = options.group
+      ? (lineup.members[groupIndex] ?? [])
+      : Array.from({ length: channelCount(lineup) }, (_, i) => i);
+    const matching: number[] = [];
+    for (const index of source) {
+      if (!search || nameOf(lineup, index).toLowerCase().includes(search))
+        matching.push(index);
+    }
+    return {
+      groups: lineup.groups.map((name, i) => ({
+        name,
+        count: lineup.members[i].length,
+      })),
+      total: matching.length,
+      channels: matching.slice(offset, offset + limit).map((index) => ({
+        id: lineup.streamIds[index],
+        name: nameOf(lineup, index),
+        number: lineup.numbers[index] || index + 1,
+        logo: iconOf(lineup, index) || undefined,
+      })),
+    };
+  }
+
   private indexOf(lineup: Lineup, id: string): number {
     const ref = this.parse(id);
     return ref ? indexOfStream(lineup, ref.streamId) : -1;
   }
 
-  private preview(lineup: Lineup, i: number) {
+  private preview(lineup: Lineup, i: number, group?: string) {
     const icon = iconOf(lineup, i) || undefined;
-    const group = lineup.groupOf[i];
     const days = lineup.archiveDays[i];
     return {
       id: `${this.prefix}${lineup.streamIds[i]}`,
@@ -227,7 +271,7 @@ export class XtreamAddon {
       posterShape: 'square' as const,
       logo: icon,
       channelNumber: String(lineup.numbers[i] || i + 1),
-      genres: group >= 0 ? [lineup.groups[group]] : undefined,
+      genres: group ? [group] : undefined,
       behaviorHints: days ? { catchupDays: days } : undefined,
     };
   }
