@@ -6,6 +6,7 @@ import TemplateOption from '../../../shared/template-option';
 import MarkdownLite from '../../../shared/markdown-lite';
 import { useMode } from '@/context/mode';
 import { toast } from 'sonner';
+import { XtreamLineupManager } from './xtream-lineup-manager';
 
 export function AddonModal({
   open,
@@ -133,6 +134,20 @@ export function AddonModal({
             />
           </div>
         ))}
+        {presetMetadata?.ID === 'xtream' && (
+          <XtreamLineupManager
+            server={values.options?.server}
+            username={values.options?.username}
+            password={values.options?.password}
+            value={values.options?.lineup}
+            onChange={(lineup) =>
+              setValues((current) => ({
+                ...current,
+                options: { ...current.options, lineup },
+              }))
+            }
+          />
+        )}
         <Button
           className="w-full mt-2"
           type="submit"
