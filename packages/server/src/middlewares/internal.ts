@@ -8,6 +8,7 @@ const WHIELIST = [
   '/library/refresh',
   '/newznab/test',
   '/torznab/test',
+  '/xtream/preview',
 ];
 
 export const internalMiddleware = (
