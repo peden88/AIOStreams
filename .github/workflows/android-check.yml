@@ -10,7 +10,7 @@ on:
       - '!packages/android/web-app.lock'
       - '.github/workflows/android-*.yml'
   push:
-    branches: [main]
+    branches: [main, test/xtream-android-tv]
     paths: *android
   workflow_dispatch:
 
@@ -55,9 +55,9 @@ jobs:
           "$sdkmanager" --install "platforms;android-37.2" "ndk;$(pinned android-ndk)" "cmake;$(pinned android-cmake)" >/dev/null
       - working-directory: packages/android
         run: ./gradlew :app:assembleDebug
-      - if: github.event_name == 'workflow_dispatch'
+      - if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/test/xtream-android-tv'
         uses: actions/upload-artifact@v7
         with:
-          name: aiostreams-android-debug
+          name: aiostreams-android-tv-xtream-debug
           path: packages/android/app/build/outputs/apk/debug/*.apk
           compression-level: 0
