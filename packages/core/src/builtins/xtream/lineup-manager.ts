@@ -37,6 +37,15 @@ function preferredFirst<T>(source: T[], preferred: T[]): T[] {
   return result;
 }
 
+/** Keep category visibility and ordering consistent between manifest and catalog calls. */
+export function visibleGroupNames(
+  groups: string[],
+  rules: XtreamLineupRules
+): string[] {
+  const hidden = new Set(rules.hiddenGroups);
+  return preferredFirst(groups.filter((g) => !hidden.has(g)), rules.groupOrder);
+}
+
 /** A small per-source cache, so pagination and guide calls don't rearrange large lineups. */
 const cached = new WeakMap<Lineup, Map<string, ManagedLineup>>();
 const MAX_VIEWS_PER_LINEUP = 8;
