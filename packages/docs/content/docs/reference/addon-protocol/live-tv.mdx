@@ -137,3 +137,25 @@ GET {addonBase}/stream/tv/mytv:bbc-news:1762300800.json
 
 Answer with the programme from its start to its end, or no streams where it's gone. A stream that
 can be seeked plays best; an Xtream archive (`/timeshift/…`) only plays from where it starts.
+
+
+## Managing the built-in Xtream lineup
+
+The built-in Xtream preset can keep a per-configuration lineup of visible
+categories, visible channels and their preferred order.
+
+In **Configure → Addons**, install or edit **Xtream**, then expand **Manage Live
+TV categories and channels**. Enter the provider URL and credentials, load its
+lineup, and select the categories and channels to show. Category arrow controls
+change the order of groups. **Top** and the priority arrows place chosen
+channels before the provider's remaining channel order. Save the addon and
+then save the configuration.
+
+Hidden channels are excluded from the channel catalog, Jellyfin Live TV and
+guide, search, metadata and playback. Channels in several categories remain
+visible if at least one of their categories is enabled. Provider channel
+numbers stay stable, and unconfigured installations keep the original order.
+
+The browser fetches the provider listing in pages of 100; no separate M3U
+editor, recording server or CSS is required. These controls currently apply
+only to the built-in Xtream preset, not arbitrary Stremio Live TV addons.
