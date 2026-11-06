@@ -11,6 +11,7 @@ import {
 } from '../db/index.js';
 import { StreamParser } from '../parser/index.js';
 import { serverBase } from '../builtins/xtream/api.js';
+import { XtreamLineupRulesSchema } from '../builtins/xtream/lineup-manager.js';
 
 class XtreamStreamParser extends StreamParser {
   protected override getParsedFile(): ParsedFile | undefined {
@@ -110,6 +111,9 @@ export class XtreamPreset extends Preset {
         server: options.server,
         username: options.username,
         password: options.password,
+        ...(options.lineup && {
+          lineup: XtreamLineupRulesSchema.parse(options.lineup),
+        }),
       },
       'urlSafe'
     );
