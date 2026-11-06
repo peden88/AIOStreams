@@ -219,15 +219,33 @@ describe('toWireMediaInfo', () => {
     });
     const wire = toWireMediaInfo(v);
     assert.equal(wire.audio?.length, 1);
+    // The shared wire serializer preserves index/default/accessibility flags.
+    // This test previously asserted the older subset and failed after that
+    // serializer was extended, even though its output was correct.
     assert.deepEqual(wire.audio?.[0], {
+      index: 0,
       codec: 'eac3',
       profile: undefined,
       lang: 'eng',
       title: undefined,
       ch_layout: '5.1',
       ch: 6,
+      default: true,
+      commentary: undefined,
+      dub: undefined,
+      original: undefined,
+      hearing_impaired: false,
+      visual_impaired: undefined,
     });
-    assert.deepEqual(wire.subtitle?.[0], { lang: 'fre', title: 'French' });
+    assert.deepEqual(wire.subtitle?.[0], {
+      index: 0,
+      codec: undefined,
+      lang: 'fre',
+      title: 'French',
+      default: true,
+      forced: false,
+      hearing_impaired: false,
+    });
   });
 
   test('converts duration from seconds to nanoseconds', () => {
