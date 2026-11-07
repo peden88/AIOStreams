@@ -1,0 +1,54 @@
+name: Publish Xtream Android TV 32-bit APK
+
+on:
+  push:
+    branches:
+      - test/xtream-android-tv
+    paths:
+      - '.github/workflows/xtream-tv-apk-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish public 32-bit APK asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APKs from verified successful debug build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p downloaded
+          gh run download 42313090473 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name aiostreams-android-tv-xtream-debug \
+            --dir downloaded
+          test -s downloaded/app-armeabi-v7a-debug.apk
+
+      - name: Verify and prepare ARM 32-bit APK
+        run: |
+          echo 'f0ef1869dd263e38e69478585de6a59ac81021683fbf9866f797f88c387f2ca3  downloaded/app-armeabi-v7a-debug.apk' | sha256sum -c -
+          cp downloaded/app-armeabi-v7a-debug.apk AIOStreams-Xtream-LiveTV-AndroidTV-32bit-debug.apk
+          ls -lh AIOStreams-Xtream-LiveTV-AndroidTV-32bit-debug.apk
+
+      - name: Publish directly downloadable GitHub Release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=xtream-lineup-androidtv-debug
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target be5cacd95f5eff258dd45b0e424dc1afe0fa44bf \
+              --title "AIOStreams Xtream Live TV - Android TV 32-bit Debug" \
+              --notes "Isolated test APK for 32-bit ARM Android TV (armeabi-v7a). Built from GitHub Actions run 42313090473. Installs as AIOStreams Debug alongside the normal app. SHA256: f0ef1869dd263e38e69478585de6a59ac81021683fbf9866f797f88c387f2ca3." \
+              --prerelease \
+              --latest=false
+          fi
+          gh release upload "$TAG" \
+            AIOStreams-Xtream-LiveTV-AndroidTV-32bit-debug.apk \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
